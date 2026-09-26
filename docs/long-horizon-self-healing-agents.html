@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A code-grounded guide to building durable, policy-safe, human-supervised AI agents with Temporal, LangGraph, and Python.">
+  <meta name="theme-color" content="#07111f">
+  <title>Long-Horizon Self-Healing Agents — Durable AI Beyond the Prompt</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #e9f2ff;
+      --muted: #9fb0c7;
+      --faint: #667790;
+      --bg: #07111f;
+      --surface: #0c192a;
+      --surface-2: #102138;
+      --line: rgba(164, 190, 224, .16);
+      --cyan: #57d9ff;
+      --mint: #79f2c0;
+      --amber: #ffca72;
+      --rose: #ff7f9f;
+      --violet: #ad9cff;
+      --code: #050c16;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 80% -10%, rgba(87,217,255,.12), transparent 35rem),
+        radial-gradient(circle at -10% 24%, rgba(173,156,255,.1), transparent 32rem),
+        var(--bg);
+      color: var(--ink);
+      font: 17px/1.7 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: var(--cyan); text-underline-offset: .18em; }
+    a:hover { color: var(--mint); }
+    button { font: inherit; }
+    ::selection { background: rgba(87,217,255,.28); }
+
+    .reading-progress {
+      position: fixed;
+      z-index: 50;
+      inset: 0 auto auto 0;
+      height: 3px;
+      width: 0;
+      background: linear-gradient(90deg, var(--violet), var(--cyan), var(--mint));
+      box-shadow: 0 0 18px var(--cyan);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: .24;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, black, transparent 86%);
+      pointer-events: none;
+    }
+    .hero-inner {
+      position: relative;
+      width: min(var(--max), calc(100% - 40px));
+      margin: 0 auto;
+      padding: 108px 0 88px;
+    }
+    .eyebrow {
+      margin: 0 0 20px;
+      color: var(--mint);
+      font: 700 .78rem/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 970px;
+      margin: 0;
+      font-size: clamp(3rem, 7.2vw, 6.8rem);
+      line-height: .98;
+      letter-spacing: -.065em;
+    }
+    h1 span {
+      color: transparent;
+      background: linear-gradient(100deg, var(--cyan), var(--mint));
+      background-clip: text;
+      -webkit-background-clip: text;
+    }
+    .dek {
+      max-width: 790px;
+      margin: 32px 0 0;
+      color: #bdcbe0;
+      font-size: clamp(1.12rem, 2vw, 1.38rem);
+      line-height: 1.55;
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 24px;
+      margin-top: 38px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    .hero-meta span::before { content: "◆"; margin-right: 9px; color: var(--cyan); }
+
+    .page-grid {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 760px);
+      gap: 64px;
+      width: min(var(--max), calc(100% - 40px));
+      margin: 0 auto;
+      padding: 70px 0 110px;
+    }
+    .toc { position: relative; }
+    .toc-inner { position: sticky; top: 36px; }
+    .toc-title {
+      margin: 0 0 16px;
+      color: var(--faint);
+      font-size: .72rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
+    .toc a {
+      display: block;
+      padding: 7px 0 7px 17px;
+      color: var(--muted);
+      font-size: .84rem;
+      line-height: 1.35;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transform: translateX(-1px);
+    }
+    .toc a:hover, .toc a.active { color: var(--ink); border-left-color: var(--cyan); }
+
+    main { min-width: 0; }
+    section { scroll-margin-top: 36px; margin: 0 0 94px; }
+    h2 {
+      margin: 0 0 24px;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.08;
+      letter-spacing: -.045em;
+    }
+    h3 { margin: 42px 0 14px; font-size: 1.35rem; line-height: 1.28; }
+    p { margin: 0 0 22px; }
+    strong { color: #fff; }
+    .section-no {
+      display: block;
+      margin-bottom: 11px;
+      color: var(--cyan);
+      font: 700 .72rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: .14em;
+    }
+    .lead { color: #c7d5e8; font-size: 1.16rem; line-height: 1.68; }
+
+    .thesis {
+      margin: 38px 0;
+      padding: 25px 28px;
+      border-left: 3px solid var(--mint);
+      background: linear-gradient(90deg, rgba(121,242,192,.09), transparent);
+      color: #d8e7f5;
+      font-size: 1.16rem;
+    }
+    .thesis strong { color: var(--mint); }
+
+    .diagram {
+      margin: 36px 0;
+      padding: 22px 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(8, 20, 35, .76);
+      box-shadow: 0 22px 60px rgba(0,0,0,.18);
+    }
+    .diagram figcaption {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: .8rem;
+      text-align: center;
+    }
+    .mermaid { min-width: 640px; text-align: center; }
+
+    .concept-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 30px 0;
+    }
+    .concept {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(16,33,56,.58);
+    }
+    .concept .tag {
+      color: var(--amber);
+      font: 700 .68rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .concept h3 { margin: 12px 0 9px; font-size: 1.08rem; }
+    .concept p { margin: 0; color: var(--muted); font-size: .92rem; }
+
+    pre {
+      position: relative;
+      margin: 28px 0;
+      padding: 24px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--code);
+      color: #cfe3f4;
+      font: .86rem/1.62 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      tab-size: 2;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    p code, li code {
+      padding: .12em .38em;
+      color: #bfeeff;
+      background: rgba(87,217,255,.09);
+      border: 1px solid rgba(87,217,255,.14);
+      border-radius: 5px;
+      font-size: .9em;
+    }
+    .copy {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 5px 9px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #0b1726;
+      cursor: pointer;
+      font-size: .72rem;
+    }
+    .copy:hover { color: var(--ink); border-color: rgba(87,217,255,.4); }
+
+    .decision-table { width: 100%; margin: 30px 0; border-collapse: collapse; font-size: .9rem; }
+    .decision-table th, .decision-table td { padding: 14px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .decision-table th { color: var(--mint); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
+    .decision-table td { color: #b8c7da; }
+    .decision-table td:first-child { color: var(--ink); font-weight: 650; }
+
+    .warning {
+      margin: 30px 0;
+      padding: 22px 24px;
+      border: 1px solid rgba(255,202,114,.28);
+      border-radius: 10px;
+      background: rgba(255,202,114,.07);
+    }
+    .warning strong { color: var(--amber); }
+
+    .steps { counter-reset: build; margin: 32px 0 0; }
+    .step {
+      position: relative;
+      margin-left: 24px;
+      padding: 0 0 48px 45px;
+      border-left: 1px solid var(--line);
+    }
+    .step:last-child { border-left-color: transparent; padding-bottom: 0; }
+    .step::before {
+      counter-increment: build;
+      content: counter(build, decimal-leading-zero);
+      position: absolute;
+      top: -2px;
+      left: -24px;
+      display: grid;
+      width: 46px;
+      height: 46px;
+      place-items: center;
+      color: var(--bg);
+      border-radius: 50%;
+      background: var(--cyan);
+      font: 800 .77rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .step h3 { margin: 0 0 10px; }
+    .step p { color: var(--muted); }
+    .step .done-when { color: var(--mint); font-size: .86rem; }
+
+    .repo-map {
+      margin: 28px 0;
+      padding: 22px 24px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(5,12,22,.7);
+      white-space: pre-wrap;
+    }
+    .repo-map .folder { color: var(--cyan); }
+    .repo-map .comment { color: var(--faint); }
+
+    .closing {
+      padding: 38px;
+      border: 1px solid rgba(121,242,192,.22);
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(121,242,192,.09), rgba(87,217,255,.04));
+    }
+    .closing h2 { font-size: clamp(2rem, 4vw, 3.1rem); }
+    .closing p:last-child { margin-bottom: 0; }
+
+    footer {
+      padding: 34px 20px;
+      color: var(--faint);
+      border-top: 1px solid var(--line);
+      text-align: center;
+      font-size: .8rem;
+    }
+
+    @media (max-width: 900px) {
+      .page-grid { grid-template-columns: 1fr; gap: 0; }
+      .toc { display: none; }
+      .hero-inner { padding: 80px 0 66px; }
+    }
+    @media (max-width: 620px) {
+      body { font-size: 16px; }
+      .hero-inner, .page-grid { width: min(100% - 28px, var(--max)); }
+      h1 { font-size: clamp(2.65rem, 15vw, 4.4rem); }
+      .concept-grid { grid-template-columns: 1fr; }
+      .diagram { margin-inline: -7px; padding-inline: 10px; }
+      .step { margin-left: 20px; padding-left: 34px; }
+      .closing { padding: 26px 22px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" aria-hidden="true"></div>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Architecture deep dive · Temporal + LangGraph + Python</p>
+      <h1>Long-horizon agents need a <span>memory of consequences</span></h1>
+      <p class="dek">A prompt can produce an answer. A durable agent must survive process death, wait days for a person, retry unreliable systems, enforce non-negotiable policy, and resume without repeating side effects. This project shows the beginnings of that architecture through a customer-refund workflow.</p>
+      <div class="hero-meta" aria-label="Article metadata">
+        <span>Advanced concepts</span>
+        <span>Code-grounded</span>
+        <span>12 minute read</span>
+        <span>Includes build roadmap</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-grid">
+    <aside class="toc" aria-label="Table of contents">
+      <div class="toc-inner">
+        <p class="toc-title">In this article</p>
+        <ol>
+          <li><a href="#problem">The real problem</a></li>
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="#determinism">Determinism boundary</a></li>
+          <li><a href="#healing">What self-healing means</a></li>
+          <li><a href="#human">Human control plane</a></li>
+          <li><a href="#state">State and policy</a></li>
+          <li><a href="#production">Production gaps</a></li>
+          <li><a href="#build">Build it piece by piece</a></li>
+          <li><a href="#takeaway">Final takeaway</a></li>
+        </ol>
+      </div>
+    </aside>
+
+    <main>
+      <section id="problem">
+        <span class="section-no">01 / THE PROBLEM</span>
+        <h2>An agent is not long-running because its prompt is long</h2>
+        <p class="lead">The difficult part of agentic systems is not generating the next token. It is preserving intent and correctness across time, failure, and organizational boundaries.</p>
+        <p>Consider a refund request. The system must understand an unstructured complaint, join it with order facts, decide eligibility, apply financial limits, sometimes wait for a reviewer, call an unreliable payment gateway, and send a coherent response. A failure can occur between any two of those actions. The worker may restart after a model call but before its result is saved. The refund API may succeed while the network response disappears. A reviewer may answer tomorrow.</p>
+        <p>If this is implemented as a single agent loop, “try again” can mean “charge again,” “send again,” or “reason from a different state.” Reliability therefore belongs below the model, in a durable execution layer that records what happened and constrains what may happen next.</p>
+        <div class="thesis"><strong>Core thesis:</strong> let models interpret and communicate; let deterministic code authorize; let durable orchestration remember.</div>
+      </section>
+
+      <section id="architecture">
+        <span class="section-no">02 / ARCHITECTURE</span>
+        <h2>Three layers, three different kinds of authority</h2>
+        <p>The repository separates the system into a CLI trigger, a Temporal workflow, Temporal activities, and small LangGraph agents. That separation is more important than the particular customer-support example: it creates explicit failure and trust boundaries.</p>
+
+        <figure class="diagram">
+          <figcaption>Figure 1 — The orchestration layer owns progress; agents provide bounded capabilities.</figcaption>
+          <pre class="mermaid">
+flowchart LR
+  U[Operator / CLI] -->|start, signal, query| T[Temporal Service]
+  T --> W[CustomerSupportWorkflow]
+  W -->|scheduled task| A[Activities]
+  A --> I[Intake LangGraph]
+  A --> E[Eligibility LangGraph]
+  A --> C[Comms LangGraph]
+  A --> R[Refund API]
+  I --> LLM[(LLM)]
+  C --> LLM
+  W -->|deterministic gates| P{Policy + approval}
+  H[Human reviewer] -->|durable signal| T
+
+  classDef durable fill:#102138,stroke:#57d9ff,color:#e9f2ff,stroke-width:2px;
+  classDef agent fill:#15253d,stroke:#ad9cff,color:#e9f2ff;
+  classDef control fill:#17291f,stroke:#79f2c0,color:#e9f2ff;
+  class T,W durable;
+  class I,E,C,LLM agent;
+  class P,H control;
+          </pre>
+        </figure>
+
+        <div class="concept-grid">
+          <article class="concept">
+            <span class="tag">Durable authority</span>
+            <h3>Temporal workflow</h3>
+            <p>Owns sequence, timers, retries, signals, and terminal outcomes. Its history is the source of truth for progress.</p>
+          </article>
+          <article class="concept">
+            <span class="tag">Cognitive capability</span>
+            <h3>LangGraph agents</h3>
+            <p>Classify complaints and draft messages inside activities. Their outputs are data, not permission.</p>
+          </article>
+          <article class="concept">
+            <span class="tag">Policy authority</span>
+            <h3>Deterministic gates</h3>
+            <p>Thresholds in ordinary code decide auto-approval, human review, or a hard stop.</p>
+          </article>
+          <article class="concept">
+            <span class="tag">External authority</span>
+            <h3>Human signals</h3>
+            <p>A reviewer can approve or reject without being coupled to a running worker process.</p>
+          </article>
+        </div>
+
+        <p>The implementation expresses these boundaries in its file structure:</p>
+        <pre class="repo-map"><span class="folder">app/</span>
+├── workflow.py          <span class="comment"># durable control flow and policy gates</span>
+├── activities.py        <span class="comment"># side effects and agent adapters</span>
+├── contracts.py         <span class="comment"># typed payloads and thresholds</span>
+├── worker.py            <span class="comment"># registers workflow + activities</span>
+├── trigger.py           <span class="comment"># starts, signals, and queries</span>
+└── agents/
+    ├── intake_agent.py      <span class="comment"># LLM structured extraction</span>
+    ├── eligibility_agent.py <span class="comment"># deterministic graph</span>
+    └── comms_agent.py       <span class="comment"># bounded response generation</span></pre>
+      </section>
+
+      <section id="determinism">
+        <span class="section-no">03 / DETERMINISM</span>
+        <h2>Replay is the hidden contract</h2>
+        <p class="lead">Temporal can reconstruct workflow state by replaying recorded history through workflow code. That only works when the workflow makes the same decisions from the same history.</p>
+        <p>This is why the project keeps model calls, UUID generation, external APIs, and changing clocks inside activities. The workflow itself compares recorded values against constants and chooses branches. On replay, Temporal does not need to ask the model again for already-completed activities; it supplies the result recorded in history.</p>
+
+        <pre><code># workflow.py — orchestration is deterministic
+intake = await workflow.execute_activity(ingest_complaint, complaint, ...)
+eligibility = await workflow.execute_activity(assess_eligibility, intake, ...)
+
+amount = eligibility.refund_amount
+if amount &gt; POLICY_MAX_REFUND:
+    return await policy_block(...)
+if amount &gt; AUTO_APPROVE_THRESHOLD:
+    await workflow.wait_condition(lambda: self._approval is not None, ...)</code></pre>
+
+        <p>There is a subtle design principle here: <strong>an LLM result becomes trustworthy workflow input only after it crosses a typed activity boundary and is recorded.</strong> Pydantic models such as <code>IntakeResult</code> and <code>EligibilityResult</code> make that boundary explicit. They reduce ambiguity, stabilize serialization, and give downstream policy code a constrained vocabulary.</p>
+
+        <table class="decision-table">
+          <thead><tr><th>Operation</th><th>Where it belongs</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Compare refund to $2,000</td><td>Workflow</td><td>Pure, replay-safe authorization decision</td></tr>
+            <tr><td>Classify complaint text</td><td>Activity + agent</td><td>Model output is non-deterministic and may fail</td></tr>
+            <tr><td>Create refund reference</td><td>Activity</td><td>UUID generation is non-deterministic</td></tr>
+            <tr><td>Wait 90 seconds</td><td>Workflow timer</td><td>The wait must survive worker restarts</td></tr>
+            <tr><td>Send customer message</td><td>Activity</td><td>External side effect requires retry controls</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="healing">
+        <span class="section-no">04 / FAILURE SEMANTICS</span>
+        <h2>Self-healing is recovery with invariants</h2>
+        <p>The term <em>self-healing</em> is often used too loosely. Restarting a process is not enough. A useful definition is: the system can detect a recoverable failure, resume from durable state, retry according to policy, and preserve business invariants without manual reconstruction.</p>
+
+        <figure class="diagram">
+          <figcaption>Figure 2 — One business action can span retries, restarts, and a durable human wait.</figcaption>
+          <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant C as CLI / Client
+  participant T as Temporal
+  participant W as Workflow Worker
+  participant A as Activity Worker
+  participant H as Human Reviewer
+  participant G as Refund Gateway
+
+  C->>T: Start workflow
+  T->>W: Replay history + workflow task
+  W->>A: Ingest and assess
+  A-->>T: Typed results recorded
+  T-->>W: Resume with recorded results
+  alt Above auto-approve threshold
+    W->>T: Wait for approval signal
+    Note over W,T: Worker may stop; timer and wait remain durable
+    H->>T: Approve / reject signal
+    T->>W: Resume from history
+  end
+  W->>A: Process refund
+  A->>G: Attempt 1
+  G--xA: Transient failure
+  A->>G: Attempt 2 after backoff
+  G--xA: Transient failure
+  A->>G: Attempt 3
+  G-->>A: Success
+  A-->>T: Refund result recorded
+  T-->>C: Durable completion
+          </pre>
+        </figure>
+
+        <p>The repository defines two retry profiles. Standard activities get three attempts beginning at two seconds. Refund processing gets five attempts, exponential backoff, and a 30-second maximum interval. The distinction is healthy: retries are not a generic toggle; they are part of the semantics of each dependency.</p>
+
+        <pre><code>_REFUND_RETRY = RetryPolicy(
+    maximum_attempts=5,
+    initial_interval=timedelta(seconds=4),
+    backoff_coefficient=2.0,
+    maximum_interval=timedelta(seconds=30),
+)</code></pre>
+
+        <div class="warning"><strong>Advanced caveat — retries are not idempotency.</strong> The demo fails before creating a refund, so retrying is safe. A real gateway can commit the refund and then lose the response. The next attempt could pay twice. Production code should send a stable idempotency key—usually derived from the workflow ID and business operation—and persist the provider’s response.</div>
+
+        <h3>Failure classification comes before recovery</h3>
+        <p>Transient transport errors deserve retry. Invalid payloads, policy violations, and missing orders usually do not. A mature system attaches explicit error types, non-retryable flags, timeouts, and escalation routes. Otherwise a “self-healing” loop can become a very durable denial-of-service attack against its own dependencies.</p>
+      </section>
+
+      <section id="human">
+        <span class="section-no">05 / HUMAN CONTROL</span>
+        <h2>Humans are part of the protocol, not an exception path</h2>
+        <p>Refunds above <code>AUTO_APPROVE_THRESHOLD</code> pause on <code>workflow.wait_condition</code>. The reviewer decision arrives as a Temporal signal carrying an approval bit, reviewer identity, and notes. A query exposes current status without mutating workflow state.</p>
+
+        <pre><code>@workflow.signal
+def human_approval(self, signal: HumanApprovalSignal) -&gt; None:
+    self._approval = signal
+
+@workflow.query
+def approval_status(self) -&gt; str:
+    if self._approval is None:
+        return "AWAITING_HUMAN_REVIEW"
+    return "APPROVED" if self._approval.approved else "REJECTED"</code></pre>
+
+        <p>This is a control-plane design. The workflow can be waiting even when no worker is holding a thread, socket, or database lock. The signal becomes part of history, which makes the reviewer decision replayable and auditable. The timeout also has business meaning: after 90 seconds in this demo, the case transitions to <code>TIMED_OUT_ESCALATED</code> and the customer receives a different message.</p>
+        <p>For production, strengthen the signal boundary with authentication, role checks, duplicate-signal handling, decision versioning, and an immutable review record. “A signal was received” is not the same claim as “an authorized person approved the correct policy version.”</p>
+      </section>
+
+      <section id="state">
+        <span class="section-no">06 / STATE + POLICY</span>
+        <h2>The workflow is an executable state machine</h2>
+        <p>Enums in <code>contracts.py</code> name the observable outcomes, while branches in <code>workflow.py</code> define which transitions are possible. The policy maximum is a true hard stop: there is no model instruction capable of routing around it because no forward edge exists in code.</p>
+
+        <figure class="diagram">
+          <figcaption>Figure 3 — The refund lifecycle, including every terminal branch implemented in the project.</figcaption>
+          <pre class="mermaid">
+stateDiagram-v2
+  [*] --> Intake
+  Intake --> Eligibility
+  Eligibility --> NotEligible: outside window / unsupported issue
+  Eligibility --> PolicyGate: eligible
+  PolicyGate --> PolicyBlocked: amount > $2,000
+  PolicyGate --> AutoApproved: amount <= $500
+  PolicyGate --> HumanReview: $500 < amount <= $2,000
+  HumanReview --> HumanRejected: reject signal
+  HumanReview --> TimedOutEscalated: timer expires
+  HumanReview --> HumanApproved: approve signal
+  AutoApproved --> ProcessingRefund
+  HumanApproved --> ProcessingRefund
+  ProcessingRefund --> ProcessingRefund: retryable failure
+  ProcessingRefund --> Completed: gateway success + response
+  NotEligible --> [*]
+  PolicyBlocked --> [*]
+  HumanRejected --> [*]
+  TimedOutEscalated --> [*]
+  Completed --> [*]
+          </pre>
+        </figure>
+
+        <p>Notice the asymmetry: agents may propose structured facts, but code grants authority. The intake agent classifies <code>issue_type</code> and severity. The eligibility graph applies return-window rules. The workflow applies monetary thresholds. This is a practical form of <strong>capability containment</strong>: each component can influence only the decisions its contract permits.</p>
+
+        <h3>Policy must be versioned with history</h3>
+        <p>Long-lived workflows may outlive a code deployment. If thresholds change while old histories are replayed, branching behavior can diverge. Production Temporal applications should use workflow versioning or patching strategies and record the policy version used for each case. The rule is simple: old history must continue to mean what it meant when it was written.</p>
+      </section>
+
+      <section id="production">
+        <span class="section-no">07 / PRODUCTION READINESS</span>
+        <h2>What this prototype proves—and what it does not</h2>
+        <p class="lead">The current code is an effective architecture demonstration. It is not yet a deployable support platform. That distinction is useful because it produces a concrete hardening backlog.</p>
+
+        <table class="decision-table">
+          <thead><tr><th>Area</th><th>Current project</th><th>Production evolution</th></tr></thead>
+          <tbody>
+            <tr><td>Order data</td><td>In-memory dictionary</td><td>Versioned data access activity with timeouts and typed errors</td></tr>
+            <tr><td>Clock</td><td>Fixed demo date</td><td>Pass an effective date or record time through a replay-safe boundary</td></tr>
+            <tr><td>Refund API</td><td>Simulated failure, random reference</td><td>Stable idempotency key, reconciliation, provider receipt</td></tr>
+            <tr><td>LLM quality</td><td>Structured output prompt</td><td>Schema validation, confidence policy, eval set, fallback route</td></tr>
+            <tr><td>Human approval</td><td>Reviewer ID supplied by CLI</td><td>Authenticated identity, RBAC, policy version, audit evidence</td></tr>
+            <tr><td>Operations</td><td>Logs and Temporal UI</td><td>Metrics, traces, SLOs, alerts, dead-letter/escalation workflows</td></tr>
+            <tr><td>Packaging</td><td>No dependency or service manifest</td><td>Locked dependencies, Temporal dev stack, repeatable config</td></tr>
+          </tbody>
+        </table>
+
+        <div class="warning"><strong>Code-grounded issues to fix first:</strong> <code>cmd_demo()</code> uses <code>ORD-…</code> IDs while the data store uses <code>ORDER-…</code>; the fixed eligibility date is August 13, 2026 while comments and scenarios imply later dates; <code>main.py</code> is still the IDE sample; and no dependency manifest documents the runtime. These are small defects, but reproducibility is part of reliability.</div>
+
+        <h3>Self-healing needs observability</h3>
+        <p>A retry that eventually succeeds can still signal a degrading dependency. Track attempts per activity, end-to-end workflow latency, time spent awaiting humans, policy-block rates, model validation failures, and duplicate-suppression events. The most valuable metric is often not “workflow succeeded,” but “how much recovery work was required before it succeeded?”</p>
+      </section>
+
+      <section id="build">
+        <span class="section-no">08 / BUILD ROADMAP</span>
+        <h2>Build the project piece by piece</h2>
+        <p class="lead">The safest learning path is to add one reliability property at a time. Each stage should have a visible acceptance criterion before the next abstraction is introduced.</p>
+
+        <figure class="diagram">
+          <figcaption>Figure 4 — A dependency-ordered path from typed domain model to production feedback loop.</figcaption>
+          <pre class="mermaid">
+flowchart LR
+  A[1. Contracts] --> B[2. Pure rules]
+  B --> C[3. Agent adapters]
+  C --> D[4. Activities]
+  D --> E[5. Durable workflow]
+  E --> F[6. Human signals]
+  F --> G[7. Idempotent effects]
+  G --> H[8. Tests + chaos]
+  H --> I[9. Observability]
+  I -. feedback .-> B
+
+  classDef core fill:#102138,stroke:#57d9ff,color:#e9f2ff;
+  classDef safety fill:#17291f,stroke:#79f2c0,color:#e9f2ff;
+  class A,B,C,D,E,F core;
+  class G,H,I safety;
+          </pre>
+        </figure>
+
+        <div class="steps">
+          <article class="step">
+            <h3>Define contracts before agents</h3>
+            <p>Start with <code>CustomerComplaint</code>, <code>IntakeResult</code>, <code>EligibilityResult</code>, <code>HumanApprovalSignal</code>, and <code>WorkflowResult</code>. Enumerate terminal states. Decide which fields are facts, proposals, and authorizations.</p>
+            <p class="done-when">Done when invalid state cannot cross a component boundary unnoticed.</p>
+          </article>
+          <article class="step">
+            <h3>Implement pure business rules</h3>
+            <p>Write return-window and refund calculations without Temporal or an LLM. Test boundaries: exactly 30 days, exactly $500, exactly $2,000, unknown issue types, and missing orders.</p>
+            <p class="done-when">Done when the policy truth table passes deterministic unit tests.</p>
+          </article>
+          <article class="step">
+            <h3>Add one bounded model capability</h3>
+            <p>Use structured output only for complaint classification. Validate the schema, reject unsupported labels, and retain the original complaint for audit. Build a small evaluation set before adding more prompts.</p>
+            <p class="done-when">Done when model upgrades can be compared against repeatable examples.</p>
+          </article>
+          <article class="step">
+            <h3>Wrap uncertainty in activities</h3>
+            <p>Move model calls, database access, messaging, and payment calls behind typed activities. Give each dependency its own timeout and retry policy. Mark permanent failures as non-retryable.</p>
+            <p class="done-when">Done when workflow code contains no direct I/O or uncontrolled randomness.</p>
+          </article>
+          <article class="step">
+            <h3>Compose the durable workflow</h3>
+            <p>Orchestrate intake, eligibility, policy gates, refund processing, and customer communication. Keep branches deterministic. Start a workflow with a stable business ID such as <code>customer-support-&lt;order-id&gt;</code>.</p>
+            <p class="done-when">Done when killing and restarting the worker does not lose or duplicate completed steps.</p>
+          </article>
+          <article class="step">
+            <h3>Add a real human review protocol</h3>
+            <p>Introduce approval signals, status queries, a durable timeout, reviewer authorization, and duplicate-decision behavior. Record who decided, against which policy version, and why.</p>
+            <p class="done-when">Done when a review can outlive every application process involved.</p>
+          </article>
+          <article class="step">
+            <h3>Make side effects idempotent</h3>
+            <p>Derive a stable key from workflow ID plus operation name. Pass it to the refund provider and message service. Reconcile ambiguous timeouts before retrying. Treat deduplication evidence as part of the result.</p>
+            <p class="done-when">Done when repeating any activity cannot repeat the business effect.</p>
+          </article>
+          <article class="step">
+            <h3>Test history, failure, and evolution</h3>
+            <p>Add unit tests, workflow environment tests, replay tests against saved histories, and fault injection. Cover worker termination, activity timeout, malformed model output, late approval, and deployment during an open case.</p>
+            <p class="done-when">Done when recovery behavior is asserted, not demonstrated manually.</p>
+          </article>
+          <article class="step">
+            <h3>Close the operational feedback loop</h3>
+            <p>Instrument retries, latency, queue delay, human wait time, policy outcomes, and model quality. Route exhausted failures into explicit remediation workflows. Use evidence to tune policies, prompts, and capacity.</p>
+            <p class="done-when">Done when the system explains both success and the recovery cost of success.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="takeaway" class="closing">
+        <span class="section-no">09 / TAKEAWAY</span>
+        <h2>The agent should never be the only thing that remembers</h2>
+        <p>Long-horizon autonomy is an orchestration problem wrapped around a reasoning problem. Temporal provides durable memory and failure recovery. LangGraph provides bounded cognitive flows. Typed contracts stabilize the seam between them. Deterministic code protects policy. Human signals provide accountable intervention.</p>
+        <p>The most robust design is not the one that gives the model the most freedom. It is the one that makes every freedom explicit, every side effect replay-safe, every hard rule inescapable, and every recovery path observable.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>Based on the implementation in the long-horizon-self-healing-agents project · Diagrams rendered with Mermaid</footer>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      securityLevel: "loose",
+      themeVariables: {
+        background: "#081423",
+        primaryColor: "#102138",
+        primaryTextColor: "#e9f2ff",
+        primaryBorderColor: "#57d9ff",
+        lineColor: "#7187a3",
+        secondaryColor: "#17291f",
+        tertiaryColor: "#15253d",
+        noteBkgColor: "#17291f",
+        noteTextColor: "#e9f2ff",
+        noteBorderColor: "#79f2c0",
+        actorBkg: "#102138",
+        actorBorder: "#57d9ff",
+        actorTextColor: "#e9f2ff",
+        signalColor: "#9fb0c7",
+        signalTextColor: "#e9f2ff",
+        labelBoxBkgColor: "#102138",
+        labelBoxBorderColor: "#ad9cff",
+        labelTextColor: "#e9f2ff",
+        loopTextColor: "#e9f2ff",
+        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+      },
+      flowchart: { curve: "basis", htmlLabels: true },
+      sequence: { mirrorActors: false, useMaxWidth: true }
+    });
+  </script>
+  <script>
+    const progress = document.querySelector('.reading-progress');
+    const updateProgress = () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      progress.style.width = `${max > 0 ? (scrollY / max) * 100 : 0}%`;
+    };
+    addEventListener('scroll', updateProgress, { passive: true });
+    updateProgress();
+
+    document.querySelectorAll('pre:not(.repo-map):not(.mermaid)').forEach((block) => {
+      const button = document.createElement('button');
+      button.className = 'copy';
+      button.type = 'button';
+      button.textContent = 'Copy';
+      button.setAttribute('aria-label', 'Copy code');
+      button.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(block.innerText.replace(/^Copy\s*/, ''));
+        button.textContent = 'Copied';
+        setTimeout(() => { button.textContent = 'Copy'; }, 1400);
+      });
+      block.append(button);
+    });
+
+    const sections = [...document.querySelectorAll('main section[id]')];
+    const tocLinks = [...document.querySelectorAll('.toc a')];
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+      tocLinks.forEach((link) => link.classList.toggle('active', link.getAttribute('href') === `#${visible.target.id}`));
+    }, { rootMargin: '-15% 0px -70%', threshold: [0, .2, .6] });
+    sections.forEach((section) => observer.observe(section));
+  </script>
+</body>
+</html>
