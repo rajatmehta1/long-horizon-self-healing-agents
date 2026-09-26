@@ -1,0 +1,10 @@
+# Who owns each repository. Keys must match Sourcegraph repo names exactly.
+github.com/acme/billing-service:
+  system: Billing
+  owner: "@payments-team"
+github.com/acme/data-pipeline:
+  system: Analytics warehouse
+  owner: "@data-eng"
+github.com/acme/finance-dashboard:
+  system: Finance reporting
+  owner: "@finance-apps"

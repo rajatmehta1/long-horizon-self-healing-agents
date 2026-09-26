@@ -1,0 +1,18 @@
+# Hand-checked answer for one element. Copy, rename, and fill in from your own code.
+element: net_revenue
+repos:
+  github.com/acme/data-pipeline:
+    role: producer
+    calculations:
+      - path: models/fct_orders.sql
+        line: 42
+  github.com/acme/finance-dashboard:
+    role: producer+consumer
+    calculations:
+      - path: metrics/revenue.py
+        line: 88
+  github.com/acme/billing-service:
+    role: source of inputs
+handoffs:
+  - {from: github.com/acme/billing-service, to: github.com/acme/data-pipeline}
+  - {from: github.com/acme/data-pipeline, to: github.com/acme/finance-dashboard}

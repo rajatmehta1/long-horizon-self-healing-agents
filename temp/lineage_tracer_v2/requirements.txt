@@ -1,0 +1,7 @@
+langchain>=1.0
+langgraph>=1.0
+langchain-mcp-adapters
+langchain-anthropic
+pydantic>=2
+pyyaml
+pytest
